@@ -1,6 +1,7 @@
 .env
 results/raw/
 traces/*.jsonl
+traces/manifest_*.json
 __pycache__/
 *.pyc
 .venv/
@@ -9,4 +10,4 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-
+outputs/

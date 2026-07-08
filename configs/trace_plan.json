@@ -1,0 +1,23 @@
+{
+  "seed": 20260708,
+  "format": {
+    "required_fields": ["request_id", "prompt", "max_tokens", "arrival_order"],
+    "ignored_by_git": "traces/*.jsonl"
+  },
+  "profiles": {
+    "smoke": {
+      "description": "Small traces for script validation and simulator smoke tests.",
+      "w1": { "subjects": 6, "requests_per_subject": 4 },
+      "w2": { "conversations": 8, "turns": 4, "turn_padding_words": 4 },
+      "w3": { "tenants": 16, "requests": 120, "zipf_alpha": 1.1 },
+      "w4": { "tenants": 16, "requests": 140, "zipf_alpha": 1.1, "scan_every": 25, "scan_doc_words": 300 }
+    },
+    "main": {
+      "description": "CPU-stage main traces. Resize after GPU max_total_num_tokens is known.",
+      "w1": { "subjects": 57, "requests_per_subject": 12 },
+      "w2": { "conversations": 512, "turns": 10, "turn_padding_words": 20 },
+      "w3": { "tenants": 96, "requests": 2500, "zipf_alpha": 1.1 },
+      "w4": { "tenants": 96, "requests": 2500, "zipf_alpha": 1.1, "scan_every": 50, "scan_doc_words": 5000 }
+    }
+  }
+}
