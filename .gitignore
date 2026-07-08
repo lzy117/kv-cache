@@ -1,0 +1,12 @@
+.env
+results/raw/
+traces/*.jsonl
+__pycache__/
+*.pyc
+.venv/
+.cache/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+

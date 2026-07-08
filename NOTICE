@@ -1,0 +1,14 @@
+SGLang Cache Lab
+
+This project is based on sgl-project/sglang, Apache-2.0 licensed:
+https://github.com/sgl-project/sglang
+
+Candidate upstream tag: v0.5.14
+Candidate tag commit: 4289f36ef960fad8268a6b94935686e792a81432
+
+The patches/ directory and the companion fork branch 2q-eviction are intended
+to contain original project work: eviction event hook extensions and a full
+stateful 2Q eviction strategy. The simulator/, bench/, traces/, analysis/,
+configs/, and notes/ directories contain original experiment infrastructure
+unless a file explicitly states otherwise.
+

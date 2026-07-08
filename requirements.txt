@@ -1,0 +1,14 @@
+datasets
+fastapi
+httpx
+matplotlib
+numpy
+pandas
+pydantic
+pytest
+requests
+tqdm
+transformers
+typer
+uvicorn
+
