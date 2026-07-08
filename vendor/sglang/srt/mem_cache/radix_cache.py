@@ -643,6 +643,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
     def _match_prefix_helper(self, node: TreeNode, key: RadixKey):
         access_time = time.monotonic()
         node.last_access_time = access_time
+        self.eviction_strategy.on_hit(node)
 
         child_key = key.child_key(self.page_size)
 
@@ -650,6 +651,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
         while len(key) > 0 and child_key in node.children.keys():
             child = node.children[child_key]
             child.last_access_time = access_time
+            self.eviction_strategy.on_hit(child)
             prefix_len = child.key.match(key, page_size=self.page_size)
             if prefix_len < len(child.key):
                 new_node = self._split_node(child.key, child, prefix_len)
@@ -685,6 +687,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
         new_node.hash_value, child.hash_value = split_node_hash_value(
             child.hash_value, split_len, self.page_size
         )
+        self.eviction_strategy.on_split(new_node, child)
 
         return new_node
 
@@ -695,6 +698,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
         if chunked:
             return
         node.hit_count += 1
+        self.eviction_strategy.on_hit(node)
 
     def _insert_helper(
         self,
@@ -744,6 +748,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
             self._inc_hit_count(new_node, chunked)
             node.children[child_key] = new_node
             self.evictable_size_ += len(key)
+            self.eviction_strategy.on_insert(new_node)
             self._update_leaf_status(node)
             self._update_leaf_status(new_node)
             # Hash will be computed lazily during event emission
@@ -769,6 +774,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
                 ), f"{key=}, {child.key.child_key(self.page_size)=}"
 
     def _delete_leaf(self, node):
+        self.eviction_strategy.on_evict(node)
         key = node.key.child_key(self.page_size)
         v = node.parent.children.pop(key, None)
         assert v == node, f"parent does not have child key, {key}"

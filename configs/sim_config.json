@@ -5,7 +5,7 @@
     "mode": "regex_hash",
     "description": "Stable local tokenizer for A4 smoke/main simulation. GPU calibration can later switch to a model tokenizer."
   },
-  "policies": ["lru", "lfu", "fifo", "slru"],
+  "policies": ["lru", "lfu", "fifo", "slru", "2q"],
   "pool_sizes": [10000, 45000, 90000, 180000],
   "traces": {
     "w1": "traces/w1_main_seed20260708.jsonl",

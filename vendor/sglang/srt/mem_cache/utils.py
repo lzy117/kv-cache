@@ -36,6 +36,7 @@ from sglang.srt.mem_cache.evict_policy import (
     MRUStrategy,
     PriorityStrategy,
     SLRUStrategy,
+    TwoQStrategy,
 )
 try:
     from sglang.srt.mem_cache.triton_ops.mla_buffer import (
@@ -83,6 +84,7 @@ _EVICTION_POLICY_FACTORIES: dict[str, Callable[[], EvictionStrategy]] = {
     "filo": FILOStrategy,
     "priority": PriorityStrategy,
     "slru": SLRUStrategy,
+    "2q": TwoQStrategy,
 }
 
 

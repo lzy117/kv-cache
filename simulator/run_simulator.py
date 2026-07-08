@@ -160,7 +160,7 @@ def main() -> None:
     parser.add_argument("--config", type=Path, default=ROOT / "configs" / "sim_config.json")
     parser.add_argument("--profile", choices=["smoke", "main"], default=None)
     parser.add_argument("--workload", choices=["all", "w1", "w2", "w3", "w4"], default="all")
-    parser.add_argument("--policy", choices=["all", "lru", "lfu", "fifo", "mru", "filo", "priority", "slru"], default="all")
+    parser.add_argument("--policy", choices=["all", "lru", "lfu", "fifo", "mru", "filo", "priority", "slru", "2q"], default="all")
     parser.add_argument("--pool-size", type=int, action="append", default=None)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output", type=Path, default=None)
