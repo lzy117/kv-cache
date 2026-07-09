@@ -33,7 +33,10 @@ export RUSTUP_UPDATE_ROOT
 mkdir -p "$WORKDIR"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -d "$SCRIPT_DIR/../.git" ]]; then
+if [[ -d "$SCRIPT_DIR/../.git" || (
+  -f "$SCRIPT_DIR/../patches/sglang-2q-mem-cache.patch" &&
+  -f "$SCRIPT_DIR/../vendor/sglang/srt/mem_cache/evict_policy.py"
+) ]]; then
   LAB_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 else
   if [[ -z "$LAB_REPO_URL" ]]; then
