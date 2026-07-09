@@ -1,0 +1,227 @@
+diff --git a/sglang/srt/mem_cache/evict_policy.py b/sglang/srt/mem_cache/evict_policy.py
+index dad1625..152746b 100644
+--- a/sglang/srt/mem_cache/evict_policy.py
++++ b/sglang/srt/mem_cache/evict_policy.py
+@@ -1,7 +1,8 @@
+ from __future__ import annotations
+ 
+ from abc import ABC, abstractmethod
+-from typing import TYPE_CHECKING, Tuple, Union
++from collections import OrderedDict
++from typing import TYPE_CHECKING, Optional, Tuple, Union
+ 
+ if TYPE_CHECKING:
+     from sglang.srt.mem_cache.radix_cache import TreeNode
+@@ -12,6 +13,18 @@ class EvictionStrategy(ABC):
+     def get_priority(self, node: TreeNode) -> Union[float, Tuple]:
+         pass
+ 
++    def on_insert(self, node: TreeNode):
++        pass
++
++    def on_hit(self, node: TreeNode):
++        pass
++
++    def on_evict(self, node: TreeNode):
++        pass
++
++    def on_split(self, parent_node: TreeNode, child_node: TreeNode):
++        pass
++
+ 
+ class LRUStrategy(EvictionStrategy):
+     def get_priority(self, node: TreeNode) -> float:
+@@ -63,3 +76,109 @@ class SLRUStrategy(EvictionStrategy):
+ 
+         is_protected = 1 if node.hit_count >= self.protected_threshold else 0
+         return (is_protected, node.last_access_time)
++
++
++class TwoQStrategy(EvictionStrategy):
++    """Stateful 2Q eviction with A1in, A1out, and Am.
++
++    This implementation is designed for RadixCache leaf eviction. It uses node
++    ids for active queues and full-path token fingerprints for the ghost queue.
++    """
++
++    A1IN = "a1in"
++    AM = "am"
++
++    def __init__(self, a1out_max_entries: int = 2048):
++        self.a1out_max_entries = a1out_max_entries
++        self.queue_clock = 0
++        self.node_segment: dict[int, str] = {}
++        self.node_order: dict[int, int] = {}
++        self.node_ref: dict[int, TreeNode] = {}
++        self.a1in: OrderedDict[int, None] = OrderedDict()
++        self.am: OrderedDict[int, None] = OrderedDict()
++        self.a1out: OrderedDict[Tuple[int, ...], None] = OrderedDict()
++
++    def get_priority(self, node: TreeNode) -> Tuple[int, float, float]:
++        node_id = node.id
++        segment = self.node_segment.get(node_id)
++        if segment == self.A1IN:
++            queue_time = self.node_order.get(node_id, 0)
++            return (0, queue_time, node.last_access_time)
++        if segment == self.AM:
++            queue_time = self.node_order.get(node_id, 0)
++            return (2, queue_time, node.last_access_time)
++        return (1, node.creation_time, node.last_access_time)
++
++    def on_insert(self, node: TreeNode):
++        fingerprint = self._fingerprint(node)
++        if fingerprint in self.a1out:
++            self.a1out.pop(fingerprint, None)
++            self._set_segment(node, self.AM)
++        else:
++            self._set_segment(node, self.A1IN)
++
++    def on_hit(self, node: TreeNode):
++        node_id = node.id
++        segment = self.node_segment.get(node_id)
++        if segment == self.AM:
++            self.am.pop(node_id, None)
++            self.am[node_id] = None
++        elif segment == self.A1IN:
++            # A resident hit is a direct reuse signal for KV prefixes, so it
++            # graduates from the one-hit FIFO queue into the protected LRU queue.
++            self._set_segment(node, self.AM)
++
++    def on_evict(self, node: TreeNode):
++        node_id = node.id
++        segment = self.node_segment.pop(node_id, None)
++        self.node_order.pop(node_id, None)
++        self.node_ref.pop(node_id, None)
++        self.a1in.pop(node_id, None)
++        self.am.pop(node_id, None)
++        if segment == self.A1IN:
++            self.a1out[self._fingerprint(node)] = None
++            self._trim_a1out()
++
++    def on_split(self, parent_node: TreeNode, child_node: TreeNode):
++        child_segment = self.node_segment.get(child_node.id)
++        if child_segment is None:
++            return
++        self._set_segment(parent_node, child_segment)
++        self._set_segment(child_node, child_segment)
++
++    def _set_segment(self, node: TreeNode, segment: str):
++        node_id = node.id
++        old_segment = self.node_segment.get(node_id)
++        if old_segment == self.A1IN:
++            self.a1in.pop(node_id, None)
++        elif old_segment == self.AM:
++            self.am.pop(node_id, None)
++
++        self.node_segment[node_id] = segment
++        self.node_order[node_id] = self._next_order()
++        self.node_ref[node_id] = node
++        if segment == self.A1IN:
++            self.a1in[node_id] = None
++        elif segment == self.AM:
++            self.am[node_id] = None
++
++    def _trim_a1out(self):
++        while len(self.a1out) > self.a1out_max_entries:
++            self.a1out.popitem(last=False)
++
++    def _next_order(self) -> int:
++        self.queue_clock += 1
++        return self.queue_clock
++
++    @classmethod
++    def _fingerprint(cls, node: TreeNode) -> Tuple[int, ...]:
++        parts = []
++        cur: Optional[TreeNode] = node
++        while cur is not None and cur.parent is not None:
++            if cur.key is not None:
++                parts.append(tuple(cur.key.raw_token_ids()))
++            cur = cur.parent
++        tokens = []
++        for part in reversed(parts):
++            tokens.extend(part)
++        return tuple(tokens)
+diff --git a/sglang/srt/mem_cache/radix_cache.py b/sglang/srt/mem_cache/radix_cache.py
+index b4365b5..5fa509d 100644
+--- a/sglang/srt/mem_cache/radix_cache.py
++++ b/sglang/srt/mem_cache/radix_cache.py
+@@ -643,6 +643,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
+     def _match_prefix_helper(self, node: TreeNode, key: RadixKey):
+         access_time = time.monotonic()
+         node.last_access_time = access_time
++        self.eviction_strategy.on_hit(node)
+ 
+         child_key = key.child_key(self.page_size)
+ 
+@@ -650,6 +651,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
+         while len(key) > 0 and child_key in node.children.keys():
+             child = node.children[child_key]
+             child.last_access_time = access_time
++            self.eviction_strategy.on_hit(child)
+             prefix_len = child.key.match(key, page_size=self.page_size)
+             if prefix_len < len(child.key):
+                 new_node = self._split_node(child.key, child, prefix_len)
+@@ -685,6 +687,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
+         new_node.hash_value, child.hash_value = split_node_hash_value(
+             child.hash_value, split_len, self.page_size
+         )
++        self.eviction_strategy.on_split(new_node, child)
+ 
+         return new_node
+ 
+@@ -695,6 +698,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
+         if chunked:
+             return
+         node.hit_count += 1
++        self.eviction_strategy.on_hit(node)
+ 
+     def _insert_helper(
+         self,
+@@ -744,6 +748,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
+             self._inc_hit_count(new_node, chunked)
+             node.children[child_key] = new_node
+             self.evictable_size_ += len(key)
++            self.eviction_strategy.on_insert(new_node)
+             self._update_leaf_status(node)
+             self._update_leaf_status(new_node)
+             # Hash will be computed lazily during event emission
+@@ -769,6 +774,7 @@ class RadixCache(KVCacheEventMixin, BasePrefixCache):
+                 ), f"{key=}, {child.key.child_key(self.page_size)=}"
+ 
+     def _delete_leaf(self, node):
++        self.eviction_strategy.on_evict(node)
+         key = node.key.child_key(self.page_size)
+         v = node.parent.children.pop(key, None)
+         assert v == node, f"parent does not have child key, {key}"
+diff --git a/sglang/srt/mem_cache/utils.py b/sglang/srt/mem_cache/utils.py
+index 4fe12e6..69bd50c 100644
+--- a/sglang/srt/mem_cache/utils.py
++++ b/sglang/srt/mem_cache/utils.py
+@@ -36,6 +36,7 @@ from sglang.srt.mem_cache.evict_policy import (
+     MRUStrategy,
+     PriorityStrategy,
+     SLRUStrategy,
++    TwoQStrategy,
+ )
+ try:
+     from sglang.srt.mem_cache.triton_ops.mla_buffer import (
+@@ -83,6 +84,7 @@ _EVICTION_POLICY_FACTORIES: dict[str, Callable[[], EvictionStrategy]] = {
+     "filo": FILOStrategy,
+     "priority": PriorityStrategy,
+     "slru": SLRUStrategy,
++    "2q": TwoQStrategy,
+ }
+ 
+ 
+diff --git a/sglang/srt/server_args.py b/sglang/srt/server_args.py
+--- a/sglang/srt/server_args.py
++++ b/sglang/srt/server_args.py
+@@ -276,7 +276,7 @@ DISAGG_TRANSFER_BACKEND_CHOICES = [
+     nixl,
+ ]
+ GRAMMAR_BACKEND_CHOICES = [xgrammar, outlines]
+-RADIX_EVICTION_POLICY_CHOICES = [lru, lfu, slru, priority]
++RADIX_EVICTION_POLICY_CHOICES = [lru, lfu, slru, priority, 2q]
+ RL_ON_POLICY_TARGET_CHOICES = [min, max, random]
+ LINEAR_ATTN_KERNEL_BACKEND_CHOICES = [triton, torch]
+ 
