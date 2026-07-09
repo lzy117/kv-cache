@@ -123,21 +123,26 @@ PATCH_SRC="$LAB_DIR/patches/sglang-2q-mem-cache.patch"
 PATCH_TMP="/tmp/sglang-2q-mem-cache.patch"
 cp "$PATCH_SRC" "$PATCH_TMP"
 
+echo "Applying 2Q patch to $SGLANG_DIR..."
 (cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP")
 (cd "$SGLANG_DIR/python" && git apply "$PATCH_TMP")
 grep -q '"2q": TwoQStrategy' "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py"
+echo "2Q patch applied and policy factory registered."
 
 if [[ "$INSTALL_SGLANG" == "1" ]]; then
+  echo "Installing patched SGLang package..."
   python -m pip install -e "$SGLANG_DIR/python[all]"
 else
   echo "INSTALL_SGLANG=0, skipping editable SGLang install."
 fi
 
+echo "Running bench script py_compile smoke..."
 python -m py_compile \
   "$LAB_DIR/bench/replay.py" \
   "$LAB_DIR/bench/mock_server.py" \
   "$LAB_DIR/bench/collect.py"
 
+echo "Running 2Q import smoke..."
 python - <<'PY'
 from pathlib import Path
 import sys
