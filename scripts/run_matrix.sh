@@ -16,6 +16,7 @@ OUTPUT_DIR="${OUTPUT_DIR:-$ROOT/results/raw}"
 SUMMARY_OUT="${SUMMARY_OUT:-$ROOT/results/summary.csv}"
 FLUSH_ENDPOINT="${FLUSH_ENDPOINT:-/flush_cache}"
 REPLAY_EXTRA="${REPLAY_EXTRA:-}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -45,7 +46,7 @@ for policy in $POLICIES; do
       fi
 
       echo "-- replay workload=$workload policy=$policy pressure=$pressure trace=$trace"
-      python "$ROOT/bench/replay.py" \
+      "$PYTHON_BIN" "$ROOT/bench/replay.py" \
         --base-url "$BASE_URL" \
         --trace "$trace" \
         --output "$output" \
@@ -60,5 +61,5 @@ for policy in $POLICIES; do
   done
 done
 
-python "$ROOT/bench/collect.py" "$OUTPUT_DIR/*.jsonl" --output "$SUMMARY_OUT"
+"$PYTHON_BIN" "$ROOT/bench/collect.py" "$OUTPUT_DIR/*.jsonl" --output "$SUMMARY_OUT"
 echo "summary=$SUMMARY_OUT"
