@@ -124,8 +124,8 @@ PATCH_TMP="/tmp/sglang-2q-mem-cache.patch"
 cp "$PATCH_SRC" "$PATCH_TMP"
 
 echo "Applying 2Q patch to $SGLANG_DIR..."
-if (cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP"); then
-  (cd "$SGLANG_DIR/python" && git apply "$PATCH_TMP")
+if (cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP" && git apply "$PATCH_TMP"); then
+  echo "2Q patch applied with git apply."
 else
   echo "git apply failed; falling back to copying verified vendor mem_cache files."
   cp "$LAB_DIR/vendor/sglang/srt/mem_cache/evict_policy.py" \
