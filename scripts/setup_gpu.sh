@@ -124,8 +124,31 @@ PATCH_TMP="/tmp/sglang-2q-mem-cache.patch"
 cp "$PATCH_SRC" "$PATCH_TMP"
 
 echo "Applying 2Q patch to $SGLANG_DIR..."
-(cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP")
-(cd "$SGLANG_DIR/python" && git apply "$PATCH_TMP")
+if (cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP"); then
+  (cd "$SGLANG_DIR/python" && git apply "$PATCH_TMP")
+else
+  echo "git apply failed; falling back to copying verified vendor mem_cache files."
+  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/evict_policy.py" \
+    "$SGLANG_DIR/python/sglang/srt/mem_cache/evict_policy.py"
+  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/radix_cache.py" \
+    "$SGLANG_DIR/python/sglang/srt/mem_cache/radix_cache.py"
+  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/utils.py" \
+    "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py"
+  python - "$SGLANG_DIR/python/sglang/srt/server_args.py" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+old = 'RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority"]'
+new = 'RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority", "2q"]'
+if new not in text:
+    if old not in text:
+        raise SystemExit(f"Could not find radix eviction choices in {path}")
+    text = text.replace(old, new, 1)
+    path.write_text(text)
+PY
+fi
 grep -q '"2q": TwoQStrategy' "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py"
 echo "2Q patch applied and policy factory registered."
 
