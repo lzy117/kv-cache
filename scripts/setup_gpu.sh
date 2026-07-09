@@ -149,7 +149,32 @@ if new not in text:
     path.write_text(text)
 PY
 fi
-grep -q '"2q": TwoQStrategy' "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py"
+python - "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py" "$SGLANG_DIR/python/sglang/srt/server_args.py" <<'PY'
+from pathlib import Path
+import sys
+
+utils_path = Path(sys.argv[1])
+server_args_path = Path(sys.argv[2])
+utils_text = utils_path.read_text()
+server_args_text = server_args_path.read_text()
+
+checks = [
+    ("TwoQStrategy import/registration", "TwoQStrategy" in utils_text and '"2q"' in utils_text, utils_path),
+    ("2q CLI choice", '"2q"' in server_args_text, server_args_path),
+]
+failed = False
+for name, ok, path in checks:
+    if ok:
+        continue
+    failed = True
+    print(f"2Q patch verification failed: {name} missing in {path}", file=sys.stderr)
+    for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+        if "2q" in line.lower() or "TwoQ" in line:
+            print(f"{path}:{lineno}: {line}", file=sys.stderr)
+
+if failed:
+    raise SystemExit(1)
+PY
 echo "2Q patch applied and policy factory registered."
 
 if [[ "$INSTALL_SGLANG" == "1" ]]; then
