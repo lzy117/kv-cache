@@ -22,6 +22,7 @@ MEM_FRACTION_STATIC="${MEM_FRACTION_STATIC:-0.85}"
 PORT="${PORT:-30000}"
 ATTENTION_BACKEND="${ATTENTION_BACKEND:-}"
 INSTALL_SGLANG="${INSTALL_SGLANG:-1}"
+INSTALL_RUST="${INSTALL_RUST:-1}"
 
 mkdir -p "$WORKDIR"
 
@@ -51,6 +52,21 @@ fi
 source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install -r "$LAB_DIR/requirements.txt"
+
+if [[ "$INSTALL_RUST" == "1" ]] && ! command -v rustc >/dev/null 2>&1; then
+  echo "Rust compiler not found. Installing rustc/cargo for editable SGLang build..."
+  if command -v apt-get >/dev/null 2>&1 && [[ "$(id -u)" == "0" ]]; then
+    apt-get update
+    apt-get install -y rustc cargo
+  elif command -v curl >/dev/null 2>&1; then
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+    # shellcheck source=/dev/null
+    source "$HOME/.cargo/env"
+  else
+    echo "Cannot install Rust automatically. Install rustc/cargo, then rerun setup." >&2
+    exit 1
+  fi
+fi
 
 SGLANG_DIR="$WORKDIR/sglang"
 if [[ ! -d "$SGLANG_DIR/.git" ]]; then
