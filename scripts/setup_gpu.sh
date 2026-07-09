@@ -52,6 +52,59 @@ fi
 echo "lab_dir=$LAB_DIR"
 echo "workdir=$WORKDIR"
 
+apply_vendor_twoq_patch() {
+  echo "Applying verified vendor 2Q files."
+  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/evict_policy.py" \
+    "$SGLANG_DIR/python/sglang/srt/mem_cache/evict_policy.py"
+  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/radix_cache.py" \
+    "$SGLANG_DIR/python/sglang/srt/mem_cache/radix_cache.py"
+  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/utils.py" \
+    "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py"
+  python - "$SGLANG_DIR/python/sglang/srt/server_args.py" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+old = 'RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority"]'
+new = 'RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority", "2q"]'
+if new not in text:
+    if old not in text:
+        raise SystemExit(f"Could not find radix eviction choices in {path}")
+    text = text.replace(old, new, 1)
+    path.write_text(text)
+PY
+}
+
+verify_twoq_patch() {
+  python - "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py" "$SGLANG_DIR/python/sglang/srt/server_args.py" <<'PY'
+from pathlib import Path
+import sys
+
+utils_path = Path(sys.argv[1])
+server_args_path = Path(sys.argv[2])
+utils_text = utils_path.read_text()
+server_args_text = server_args_path.read_text()
+
+checks = [
+    ("TwoQStrategy import/registration", "TwoQStrategy" in utils_text and '"2q"' in utils_text, utils_path),
+    ("2q CLI choice", '"2q"' in server_args_text, server_args_path),
+]
+failed = False
+for name, ok, path in checks:
+    if ok:
+        continue
+    failed = True
+    print(f"2Q patch verification failed: {name} missing in {path}", file=sys.stderr)
+    for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+        if "2q" in line.lower() or "TwoQ" in line:
+            print(f"{path}:{lineno}: {line}", file=sys.stderr)
+
+if failed:
+    raise SystemExit(1)
+PY
+}
+
 if [[ ! -d "$VENV_DIR" ]]; then
   "$PYTHON_BIN" -m venv "$VENV_DIR"
 fi
@@ -128,53 +181,13 @@ if (cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP" && git apply "$PAT
   echo "2Q patch applied with git apply."
 else
   echo "git apply failed; falling back to copying verified vendor mem_cache files."
-  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/evict_policy.py" \
-    "$SGLANG_DIR/python/sglang/srt/mem_cache/evict_policy.py"
-  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/radix_cache.py" \
-    "$SGLANG_DIR/python/sglang/srt/mem_cache/radix_cache.py"
-  cp "$LAB_DIR/vendor/sglang/srt/mem_cache/utils.py" \
-    "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py"
-  python - "$SGLANG_DIR/python/sglang/srt/server_args.py" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-old = 'RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority"]'
-new = 'RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority", "2q"]'
-if new not in text:
-    if old not in text:
-        raise SystemExit(f"Could not find radix eviction choices in {path}")
-    text = text.replace(old, new, 1)
-    path.write_text(text)
-PY
+  apply_vendor_twoq_patch
 fi
-python - "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py" "$SGLANG_DIR/python/sglang/srt/server_args.py" <<'PY'
-from pathlib import Path
-import sys
-
-utils_path = Path(sys.argv[1])
-server_args_path = Path(sys.argv[2])
-utils_text = utils_path.read_text()
-server_args_text = server_args_path.read_text()
-
-checks = [
-    ("TwoQStrategy import/registration", "TwoQStrategy" in utils_text and '"2q"' in utils_text, utils_path),
-    ("2q CLI choice", '"2q"' in server_args_text, server_args_path),
-]
-failed = False
-for name, ok, path in checks:
-    if ok:
-        continue
-    failed = True
-    print(f"2Q patch verification failed: {name} missing in {path}", file=sys.stderr)
-    for lineno, line in enumerate(path.read_text().splitlines(), start=1):
-        if "2q" in line.lower() or "TwoQ" in line:
-            print(f"{path}:{lineno}: {line}", file=sys.stderr)
-
-if failed:
-    raise SystemExit(1)
-PY
+if ! verify_twoq_patch; then
+  echo "git apply did not update the target SGLang files; falling back to verified vendor files."
+  apply_vendor_twoq_patch
+  verify_twoq_patch
+fi
 echo "2Q patch applied and policy factory registered."
 
 if [[ "$INSTALL_SGLANG" == "1" ]]; then

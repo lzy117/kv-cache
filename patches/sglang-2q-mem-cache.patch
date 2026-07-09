@@ -217,11 +217,11 @@ diff --git a/sglang/srt/server_args.py b/sglang/srt/server_args.py
 --- a/sglang/srt/server_args.py
 +++ b/sglang/srt/server_args.py
 @@ -276,7 +276,7 @@ DISAGG_TRANSFER_BACKEND_CHOICES = [
-     nixl,
+     "nixl",
  ]
- GRAMMAR_BACKEND_CHOICES = [xgrammar, outlines]
--RADIX_EVICTION_POLICY_CHOICES = [lru, lfu, slru, priority]
-+RADIX_EVICTION_POLICY_CHOICES = [lru, lfu, slru, priority, 2q]
- RL_ON_POLICY_TARGET_CHOICES = [min, max, random]
- LINEAR_ATTN_KERNEL_BACKEND_CHOICES = [triton, torch]
+ GRAMMAR_BACKEND_CHOICES = ["xgrammar", "outlines"]
+-RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority"]
++RADIX_EVICTION_POLICY_CHOICES = ["lru", "lfu", "slru", "priority", "2q"]
+ RL_ON_POLICY_TARGET_CHOICES = ["min", "max", "random"]
+ LINEAR_ATTN_KERNEL_BACKEND_CHOICES = ["triton", "torch"]
  
