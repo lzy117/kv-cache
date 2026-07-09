@@ -14,6 +14,7 @@ LAB_REPO_URL="${LAB_REPO_URL:-}"
 LAB_BRANCH="${LAB_BRANCH:-main}"
 SGLANG_REPO_URL="${SGLANG_REPO_URL:-https://github.com/sgl-project/sglang.git}"
 SGLANG_TAG="${SGLANG_TAG:-v0.5.14}"
+SGLANG_CLONE_DEPTH="${SGLANG_CLONE_DEPTH:-1}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV_DIR="${VENV_DIR:-$WORKDIR/venv}"
 MODEL_PATH="${MODEL_PATH:-Qwen/Qwen2.5-7B-Instruct}"
@@ -53,10 +54,15 @@ python -m pip install -r "$LAB_DIR/requirements.txt"
 
 SGLANG_DIR="$WORKDIR/sglang"
 if [[ ! -d "$SGLANG_DIR/.git" ]]; then
-  git clone "$SGLANG_REPO_URL" "$SGLANG_DIR"
+  if [[ -e "$SGLANG_DIR" ]]; then
+    echo "$SGLANG_DIR exists but is not a git checkout. Remove it and rerun setup." >&2
+    exit 1
+  fi
+  git clone --depth "$SGLANG_CLONE_DEPTH" --branch "$SGLANG_TAG" "$SGLANG_REPO_URL" "$SGLANG_DIR"
+else
+  git -C "$SGLANG_DIR" fetch --depth "$SGLANG_CLONE_DEPTH" origin tag "$SGLANG_TAG" || true
+  git -C "$SGLANG_DIR" checkout "$SGLANG_TAG"
 fi
-git -C "$SGLANG_DIR" fetch --all --tags
-git -C "$SGLANG_DIR" checkout "$SGLANG_TAG"
 
 PATCH_SRC="$LAB_DIR/patches/sglang-2q-mem-cache.patch"
 PATCH_TMP="/tmp/sglang-2q-mem-cache.patch"
