@@ -23,6 +23,7 @@ PORT="${PORT:-30000}"
 ATTENTION_BACKEND="${ATTENTION_BACKEND:-}"
 INSTALL_SGLANG="${INSTALL_SGLANG:-1}"
 INSTALL_RUST="${INSTALL_RUST:-1}"
+RUST_MIN_VERSION="${RUST_MIN_VERSION:-1.85.0}"
 
 mkdir -p "$WORKDIR"
 
@@ -53,19 +54,47 @@ source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install -r "$LAB_DIR/requirements.txt"
 
-if [[ "$INSTALL_RUST" == "1" ]] && ! command -v rustc >/dev/null 2>&1; then
-  echo "Rust compiler not found. Installing rustc/cargo for editable SGLang build..."
-  if command -v apt-get >/dev/null 2>&1 && [[ "$(id -u)" == "0" ]]; then
-    apt-get update
-    apt-get install -y rustc cargo
-  elif command -v curl >/dev/null 2>&1; then
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+rust_version_ok() {
+  if ! command -v rustc >/dev/null 2>&1; then
+    return 1
+  fi
+  local version
+  version="$(rustc --version | awk '{print $2}')"
+  [[ "$(printf '%s\n%s\n' "$RUST_MIN_VERSION" "$version" | sort -V | head -n1)" == "$RUST_MIN_VERSION" ]]
+}
+
+install_rustup_stable() {
+  if ! command -v curl >/dev/null 2>&1; then
+    if command -v apt-get >/dev/null 2>&1 && [[ "$(id -u)" == "0" ]]; then
+      apt-get update
+      apt-get install -y curl ca-certificates
+    else
+      echo "curl is required to install a recent Rust toolchain." >&2
+      exit 1
+    fi
+  fi
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+  # shellcheck source=/dev/null
+  source "$HOME/.cargo/env"
+  rustup default stable
+}
+
+if [[ "$INSTALL_RUST" == "1" ]]; then
+  if [[ -f "$HOME/.cargo/env" ]]; then
     # shellcheck source=/dev/null
     source "$HOME/.cargo/env"
-  else
-    echo "Cannot install Rust automatically. Install rustc/cargo, then rerun setup." >&2
+  fi
+  if ! rust_version_ok; then
+    echo "Rust >= $RUST_MIN_VERSION is required for SGLang's edition2024 crates."
+    echo "Current rustc: $(rustc --version 2>/dev/null || echo missing)"
+    echo "Installing/updating Rust stable with rustup..."
+    install_rustup_stable
+  fi
+  if ! rust_version_ok; then
+    echo "Rust toolchain is still too old after installation: $(rustc --version 2>/dev/null || echo missing)" >&2
     exit 1
   fi
+  echo "Using Rust toolchain: $(rustc --version), $(cargo --version)"
 fi
 
 SGLANG_DIR="$WORKDIR/sglang"
