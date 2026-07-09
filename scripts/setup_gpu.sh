@@ -24,6 +24,7 @@ ATTENTION_BACKEND="${ATTENTION_BACKEND:-}"
 INSTALL_SGLANG="${INSTALL_SGLANG:-1}"
 INSTALL_RUST="${INSTALL_RUST:-1}"
 RUST_MIN_VERSION="${RUST_MIN_VERSION:-1.85.0}"
+RESET_SGLANG_SOURCE="${RESET_SGLANG_SOURCE:-1}"
 RUSTUP_DIST_SERVER="${RUSTUP_DIST_SERVER:-https://rsproxy.cn}"
 RUSTUP_UPDATE_ROOT="${RUSTUP_UPDATE_ROOT:-https://rsproxy.cn/rustup}"
 export RUSTUP_DIST_SERVER
@@ -113,16 +114,18 @@ else
   git -C "$SGLANG_DIR" checkout "$SGLANG_TAG"
 fi
 
+if [[ "$RESET_SGLANG_SOURCE" == "1" ]]; then
+  git -C "$SGLANG_DIR" reset --hard "$SGLANG_TAG"
+  git -C "$SGLANG_DIR" clean -fd
+fi
+
 PATCH_SRC="$LAB_DIR/patches/sglang-2q-mem-cache.patch"
 PATCH_TMP="/tmp/sglang-2q-mem-cache.patch"
 cp "$PATCH_SRC" "$PATCH_TMP"
 
-if grep -q "TwoQStrategy" "$SGLANG_DIR/python/sglang/srt/mem_cache/evict_policy.py"; then
-  echo "2Q patch already appears to be applied."
-else
-  (cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP")
-  (cd "$SGLANG_DIR/python" && git apply "$PATCH_TMP")
-fi
+(cd "$SGLANG_DIR/python" && git apply --check "$PATCH_TMP")
+(cd "$SGLANG_DIR/python" && git apply "$PATCH_TMP")
+grep -q '"2q": TwoQStrategy' "$SGLANG_DIR/python/sglang/srt/mem_cache/utils.py"
 
 if [[ "$INSTALL_SGLANG" == "1" ]]; then
   python -m pip install -e "$SGLANG_DIR/python[all]"
