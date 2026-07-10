@@ -1,0 +1,17 @@
+{
+  "seed": 20260708,
+  "trace_profile": "main",
+  "tokenizer": {
+    "mode": "regex_hash",
+    "description": "Stable local tokenizer for A4 smoke/main simulation. GPU calibration can later switch to a model tokenizer."
+  },
+  "policies": ["lru", "lfu", "fifo", "slru", "2q"],
+  "pool_sizes": [10000, 45000, 90000, 180000],
+  "traces": {
+    "w1": "traces/w1_main_seed20260708.jsonl",
+    "w2": "traces/w2_main_seed20260708.jsonl",
+    "w3": "traces/w3_main_seed20260708.jsonl",
+    "w4": "traces/w4_main_seed20260708.jsonl"
+  },
+  "output": "results/sim_matrix.csv"
+}

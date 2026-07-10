@@ -1,0 +1,13 @@
+{
+  "seed": 20260708,
+  "profile": "main",
+  "workloads": [
+    {
+      "path": "traces/w4_main_seed20260708.jsonl",
+      "requests": 2550,
+      "approx_prompt_tokens_sum": 766905,
+      "max_prompt_tokens": 10143,
+      "workload": "w4"
+    }
+  ]
+}

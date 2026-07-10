@@ -1,0 +1,49 @@
+phase,group,model,policy,workload,pressure,repeat,estimated_minutes,notes
+B1,smoke,Qwen2.5-7B-Instruct,lru,w1,smoke,1,20,server launch and cached_tokens field check
+B1,smoke,Qwen2.5-7B-Instruct,2q,w1,smoke,1,25,confirm patched 2q server can launch
+B2,calibration,Qwen2.5-1.5B-Instruct,lru,w3,medium,1,45,scan mem_fraction/concurrency for usable pressure
+B2,calibration,Qwen2.5-1.5B-Instruct,lru,w3,high,1,45,scan high pressure without queue explosion
+B3,main,Qwen2.5-7B-Instruct,lru,w1,medium,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,lru,w1,high,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,lru,w2,medium,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,lru,w2,high,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,lru,w3,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,lru,w3,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,lru,w4,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,lru,w4,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w1,medium,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w1,high,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w2,medium,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w2,high,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w3,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w3,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w4,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,lfu,w4,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w1,medium,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w1,high,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w2,medium,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w2,high,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w3,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w3,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w4,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,fifo,w4,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w1,medium,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w1,high,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w2,medium,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w2,high,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w3,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w3,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w4,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,slru,w4,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w1,medium,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w1,high,1,25,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w2,medium,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w2,high,1,35,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w3,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w3,high,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w4,medium,1,30,main matrix
+B3,main,Qwen2.5-7B-Instruct,2q,w4,high,1,30,main matrix
+B3,rerun,Qwen2.5-7B-Instruct,2q,w4,high,1,30,key comparison rerun
+B3,rerun,Qwen2.5-7B-Instruct,lru,w4,high,1,30,key comparison rerun
+B4,overhead,Qwen2.5-7B-Instruct,lru,w1,no_pressure,1,20,baseline overhead with working set below pool
+B4,overhead,Qwen2.5-7B-Instruct,2q,w1,no_pressure,1,20,2q overhead with working set below pool

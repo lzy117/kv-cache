@@ -1,0 +1,27 @@
+{
+  "seed": 20260708,
+  "profiles": {
+    "smoke": {
+      "traces": {
+        "w1": "traces/w1_smoke_seed20260708.jsonl",
+        "w2": "traces/w2_smoke_seed20260708.jsonl",
+        "w3": "traces/w3_smoke_seed20260708.jsonl",
+        "w4": "traces/w4_smoke_seed20260708.jsonl"
+      }
+    },
+    "main": {
+      "traces": {
+        "w1": "traces/w1_main_seed20260708.jsonl",
+        "w2": "traces/w2_main_seed20260708.jsonl",
+        "w3": "traces/w3_main_seed20260708.jsonl",
+        "w4": "traces/w4_main_seed20260708.jsonl"
+      }
+    }
+  },
+  "policies": ["lru", "lfu", "fifo", "slru", "2q"],
+  "pressures": ["medium", "high"],
+  "default_model": "Qwen/Qwen2.5-7B-Instruct",
+  "native_generate_endpoint": "/generate",
+  "flush_endpoint": "/flush_cache",
+  "output_dir": "results/raw"
+}

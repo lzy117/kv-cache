@@ -1,0 +1,34 @@
+{
+  "seed": 20260708,
+  "profile": "smoke",
+  "workloads": [
+    {
+      "path": "traces/w1_smoke_seed20260708.jsonl",
+      "requests": 24,
+      "approx_prompt_tokens_sum": 6456,
+      "max_prompt_tokens": 283,
+      "workload": "w1"
+    },
+    {
+      "path": "traces/w2_smoke_seed20260708.jsonl",
+      "requests": 32,
+      "approx_prompt_tokens_sum": 4030,
+      "max_prompt_tokens": 219,
+      "workload": "w2"
+    },
+    {
+      "path": "traces/w3_smoke_seed20260708.jsonl",
+      "requests": 120,
+      "approx_prompt_tokens_sum": 11392,
+      "max_prompt_tokens": 160,
+      "workload": "w3"
+    },
+    {
+      "path": "traces/w4_smoke_seed20260708.jsonl",
+      "requests": 145,
+      "approx_prompt_tokens_sum": 23734,
+      "max_prompt_tokens": 2043,
+      "workload": "w4"
+    }
+  ]
+}
