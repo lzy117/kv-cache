@@ -18,6 +18,23 @@
       "w2": { "conversations": 512, "turns": 10, "turn_padding_words": 20 },
       "w3": { "tenants": 96, "requests": 2500, "zipf_alpha": 1.1 },
       "w4": { "tenants": 96, "requests": 2500, "zipf_alpha": 1.1, "scan_every": 50, "scan_doc_words": 5000 }
+    },
+    "pressure": {
+      "description": "Adversarial traces for exposing eviction-policy differences on limited GPU memory.",
+      "w1": { "subjects": 57, "requests_per_subject": 12 },
+      "w2": { "conversations": 512, "turns": 10, "turn_padding_words": 20 },
+      "w3": { "tenants": 192, "requests": 2500, "zipf_alpha": 0.9 },
+      "w4": {
+        "mode": "hot_scan_hot",
+        "tenants": 64,
+        "requests": 500,
+        "zipf_alpha": 1.1,
+        "scan_every": 20,
+        "scan_doc_words": 1000,
+        "hot_tenants": 16,
+        "warmup_rounds": 3,
+        "post_scan_revisits": 32
+      }
     }
   }
 }

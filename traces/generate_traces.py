@@ -309,7 +309,24 @@ def generate_w4(
     zipf_alpha: float,
     scan_every: int,
     scan_doc_words: int,
+    mode: str = "zipf_with_scans",
+    hot_tenants: int = 16,
+    warmup_rounds: int = 2,
+    post_scan_revisits: int = 24,
 ) -> list[TraceRecord]:
+    if mode == "hot_scan_hot":
+        return generate_w4_hot_scan_hot(
+            rng=rng,
+            tenants=tenants,
+            requests=requests,
+            scan_doc_words=scan_doc_words,
+            hot_tenants=hot_tenants,
+            warmup_rounds=warmup_rounds,
+            post_scan_revisits=post_scan_revisits,
+        )
+    if mode != "zipf_with_scans":
+        raise ValueError(f"unknown w4 mode: {mode}")
+
     base = generate_w3(
         rng,
         tenants=tenants,
@@ -345,6 +362,82 @@ def generate_w4(
         )
         out.append(item)
         order += 1
+    return out
+
+
+def generate_w4_hot_scan_hot(
+    rng: random.Random,
+    tenants: int,
+    requests: int,
+    scan_doc_words: int,
+    hot_tenants: int,
+    warmup_rounds: int,
+    post_scan_revisits: int,
+) -> list[TraceRecord]:
+    """Generate an adversarial hot -> scan -> hot trace for eviction testing."""
+    hot_tenants = max(1, min(hot_tenants, tenants))
+    tenant_prefixes = {tenant_id: tenant_prompt(tenant_id) for tenant_id in range(tenants)}
+    out: list[TraceRecord] = []
+    order = 0
+    scan_id = 0
+    hot_request_id = 0
+
+    def add_hot(tenant_id: int, phase: str):
+        nonlocal order, hot_request_id
+        if len(out) >= requests:
+            return
+        prompt = (
+            tenant_prefixes[tenant_id]
+            + f"Hot revisit {hot_request_id}: tenant={tenant_id}, phase={phase}. "
+            + "Explain the current cache hit trend and give one operational action.\n"
+            + "Assistant:"
+        )
+        out.append(
+            TraceRecord(
+                request_id=f"w4-hot-{hot_request_id:06d}",
+                prompt=prompt,
+                max_tokens=32,
+                arrival_order=order,
+                workload="w4_hot_scan_hot",
+                meta={"tenant_id": tenant_id, "phase": phase, "is_scan": False},
+            )
+        )
+        order += 1
+        hot_request_id += 1
+
+    def add_scan():
+        nonlocal order, scan_id
+        if len(out) >= requests:
+            return
+        prompt = (
+            scan_document(scan_id, scan_doc_words)
+            + "\nSummarize this one-time document and do not assume it will be reused.\nAssistant:"
+        )
+        out.append(
+            TraceRecord(
+                request_id=f"w4-scan-{scan_id:06d}",
+                prompt=prompt,
+                max_tokens=16,
+                arrival_order=order,
+                workload="w4_hot_scan_hot",
+                meta={"scan_id": scan_id, "is_scan": True, "scan_doc_words": scan_doc_words},
+            )
+        )
+        order += 1
+        scan_id += 1
+
+    for _ in range(warmup_rounds):
+        hot_ids = list(range(hot_tenants))
+        rng.shuffle(hot_ids)
+        for tenant_id in hot_ids:
+            add_hot(tenant_id, "warmup")
+
+    while len(out) < requests:
+        add_scan()
+        for _ in range(post_scan_revisits):
+            tenant_id = hot_request_id % hot_tenants
+            add_hot(tenant_id, "post_scan")
+
     return out
 
 
@@ -385,7 +478,7 @@ def build_records(workload: str, cfg: dict[str, Any], seed: int) -> list[TraceRe
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate deterministic W1-W4 trace JSONL files.")
     parser.add_argument("--plan", type=Path, default=Path("configs/trace_plan.json"))
-    parser.add_argument("--profile", choices=["smoke", "main"], default="smoke")
+    parser.add_argument("--profile", choices=["smoke", "main", "pressure"], default="smoke")
     parser.add_argument("--workload", choices=["all", "w1", "w2", "w3", "w4"], default="all")
     parser.add_argument("--output-dir", type=Path, default=Path("traces"))
     parser.add_argument("--seed", type=int, default=None)
